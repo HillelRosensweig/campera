@@ -1,13 +1,13 @@
-import { DrawingUtils, FaceDetector, FilesetResolver, ImageSegmenter }
+import { DrawingUtils, FilesetResolver, ImageSegmenter }
   from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
-import { smoothFace } from "./anchor.js";
+import { smoothNeck } from "./anchor.js";
+import { neckFromImage } from "./neck.js";
 
 const WASM_PATH = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
 const MODEL_BASE = "https://storage.googleapis.com/mediapipe-models";
 const SEGMENTER_MODEL = `${MODEL_BASE}/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite`;
-const FACE_MODEL = `${MODEL_BASE}/face_detector/blaze_face_short_range/float16/latest/blaze_face_short_range.tflite`;
 
-const FACE_INPUT_WIDTH = 320;
+const GRID_WIDTH = 64;
 
 const TRANSPARENT = [0, 0, 0, 0];
 const OPAQUE = [0, 0, 0, 255];
@@ -19,13 +19,6 @@ function createSegmenter(fileset, canvas) {
     runningMode: "VIDEO",
     outputConfidenceMasks: true,
     outputCategoryMask: false,
-  });
-}
-
-function createFaceDetector(fileset) {
-  return FaceDetector.createFromOptions(fileset, {
-    baseOptions: { modelAssetPath: FACE_MODEL, delegate: "CPU" },
-    runningMode: "VIDEO",
   });
 }
 
@@ -48,23 +41,15 @@ function createMaskPainter(segmenterCanvas, maskCanvas, invert) {
   };
 }
 
-function shrinkInto(canvas, video) {
-  resizeIfNeeded(canvas, FACE_INPUT_WIDTH, Math.round(FACE_INPUT_WIDTH * video.videoHeight / video.videoWidth));
-  canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
-}
+function createGridSampler() {
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d", { willReadFrequently: true });
 
-const pointOf = ({ x, y }) => ({ x, y });
-
-function toFace(detection, frameSize) {
-  const { originX, originY, width, height } = detection.boundingBox;
-  const [eyeA, eyeB] = detection.keypoints;
-  return {
-    x: (originX + width / 2) / frameSize.width,
-    y: (originY + height / 2) / frameSize.height,
-    width: width / frameSize.width,
-    height: height / frameSize.height,
-    eyeA: pointOf(eyeA),
-    eyeB: pointOf(eyeB),
+  return (maskCanvas, video) => {
+    resizeIfNeeded(canvas, GRID_WIDTH, Math.round(GRID_WIDTH * video.videoHeight / video.videoWidth));
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(maskCanvas, 0, 0, canvas.width, canvas.height);
+    return context.getImageData(0, 0, canvas.width, canvas.height);
   };
 }
 
@@ -72,11 +57,10 @@ export async function createDetector({ invertMask = false } = {}) {
   const fileset = await FilesetResolver.forVisionTasks(WASM_PATH);
   const segmenterCanvas = document.createElement("canvas");
   const segmenter = await createSegmenter(fileset, segmenterCanvas);
-  const faceDetector = await createFaceDetector(fileset);
   const maskCanvas = document.createElement("canvas");
-  const faceInput = document.createElement("canvas");
   const paintMask = createMaskPainter(segmenterCanvas, maskCanvas, invertMask);
-  const state = { face: null, maskCanvas, timings: { segmentMs: 0, shrinkMs: 0, faceMs: 0 } };
+  const sampleGrid = createGridSampler();
+  const state = { neck: null, maskCanvas, timings: { segmentMs: 0, neckMs: 0 } };
 
   function segment(video, timestamp) {
     const start = performance.now();
@@ -84,20 +68,16 @@ export async function createDetector({ invertMask = false } = {}) {
     state.timings.segmentMs = performance.now() - start;
   }
 
-  function locateFace(video, timestamp) {
+  function locateNeck(video) {
     const start = performance.now();
-    shrinkInto(faceInput, video);
-    state.timings.shrinkMs = performance.now() - start;
-    const { detections } = faceDetector.detectForVideo(faceInput, timestamp);
-    const found = detections[0]?.boundingBox ? toFace(detections[0], faceInput) : null;
-    state.face = found ? smoothFace(state.face, found) : null;
-    state.timings.faceMs = performance.now() - start;
+    const found = maskCanvas.width > 0 ? neckFromImage(sampleGrid(maskCanvas, video)) : null;
+    state.neck = found ? smoothNeck(state.neck, found) : null;
+    state.timings.neckMs = performance.now() - start;
   }
 
   function detect(video) {
-    const timestamp = performance.now();
-    segment(video, timestamp);
-    locateFace(video, timestamp);
+    segment(video, performance.now());
+    locateNeck(video);
   }
 
   return { state, detect };

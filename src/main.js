@@ -44,8 +44,8 @@ function capturePhoto(compositor) {
   result.style.display = "flex";
 }
 
-function showStats(stats, { face, timings }) {
-  debug.textContent = `detect ${stats.detectionMs.toFixed(0)} ms (segment ${timings.segmentMs.toFixed(0)}, shrink ${timings.shrinkMs.toFixed(0)}, face ${timings.faceMs.toFixed(0)} incl. shrink) | ${stats.fps.toFixed(0)} fps | face ${face ? "yes" : "no"}${stats.error}`;
+function showStats(stats, { neck, timings }) {
+  debug.textContent = `detect ${stats.detectionMs.toFixed(0)} ms (segment ${timings.segmentMs.toFixed(0)}, neck ${timings.neckMs.toFixed(0)}) | ${stats.fps.toFixed(0)} fps | neck ${neck ? "yes" : "no"}${stats.error}`;
 }
 
 function updateFps(stats, now) {
