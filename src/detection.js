@@ -22,7 +22,7 @@ function createSegmenter(fileset, canvas) {
 
 function createFaceDetector(fileset) {
   return FaceDetector.createFromOptions(fileset, {
-    baseOptions: { modelAssetPath: FACE_MODEL, delegate: "GPU" },
+    baseOptions: { modelAssetPath: FACE_MODEL, delegate: "CPU" },
     runningMode: "VIDEO",
   });
 }
