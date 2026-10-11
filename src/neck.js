@@ -2,7 +2,8 @@ const PERSON_ALPHA = 128;
 const MIN_ROW_PIXELS = 2;
 const NECK_NARROWING = 0.8;
 const SHOULDER_WIDENING = 1.25;
-const NECKLESS_DROP_PER_HEAD_WIDTH = 1.3;
+const MIN_DROP_PER_HEAD_WIDTH = 1.6;
+const ESTIMATED_DROP_PER_HEAD_WIDTH = 1.9;
 
 function measureRow(data, width, y) {
   let count = 0;
@@ -46,9 +47,7 @@ function findShouldersStart(rows, neckTop) {
   return -1;
 }
 
-function estimateFromHeadWidth(top, headWidth) {
-  return Math.round(top + NECKLESS_DROP_PER_HEAD_WIDTH * headWidth);
-}
+const rowBelowTop = (top, headWidth, dropPerHeadWidth) => Math.round(top + dropPerHeadWidth * headWidth);
 
 function findNeck(rows) {
   const top = rows.findIndex((row) => row.count >= MIN_ROW_PIXELS);
@@ -57,7 +56,9 @@ function findNeck(rows) {
   const head = findHeadEnd(rows, top);
   const shoulders = head.row < rows.length ? findShouldersStart(rows, head.row) : -1;
   const lastPersonRow = rows.findLastIndex((row) => row.count >= MIN_ROW_PIXELS);
-  const row = Math.min(lastPersonRow, shoulders >= 0 ? shoulders : estimateFromHeadWidth(top, head.headWidth));
+  const earliestRow = rowBelowTop(top, head.headWidth, MIN_DROP_PER_HEAD_WIDTH);
+  const detected = shoulders >= 0 ? shoulders : rowBelowTop(top, head.headWidth, ESTIMATED_DROP_PER_HEAD_WIDTH);
+  const row = Math.min(lastPersonRow, Math.max(earliestRow, detected));
   return { row, center: rows[row].center, headWidth: head.headWidth };
 }
 
