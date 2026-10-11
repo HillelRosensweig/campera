@@ -76,7 +76,7 @@ export async function createDetector({ invertMask = false } = {}) {
   const maskCanvas = document.createElement("canvas");
   const faceInput = document.createElement("canvas");
   const paintMask = createMaskPainter(segmenterCanvas, maskCanvas, invertMask);
-  const state = { face: null, maskCanvas, timings: { segmentMs: 0, faceMs: 0 } };
+  const state = { face: null, maskCanvas, timings: { segmentMs: 0, shrinkMs: 0, faceMs: 0 } };
 
   function segment(video, timestamp) {
     const start = performance.now();
@@ -87,6 +87,7 @@ export async function createDetector({ invertMask = false } = {}) {
   function locateFace(video, timestamp) {
     const start = performance.now();
     shrinkInto(faceInput, video);
+    state.timings.shrinkMs = performance.now() - start;
     const { detections } = faceDetector.detectForVideo(faceInput, timestamp);
     const found = detections[0]?.boundingBox ? toFace(detections[0], faceInput) : null;
     state.face = found ? smoothFace(state.face, found) : null;
