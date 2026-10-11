@@ -7,6 +7,8 @@ const MODEL_BASE = "https://storage.googleapis.com/mediapipe-models";
 const SEGMENTER_MODEL = `${MODEL_BASE}/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite`;
 const FACE_MODEL = `${MODEL_BASE}/face_detector/blaze_face_short_range/float16/latest/blaze_face_short_range.tflite`;
 
+const FACE_INPUT_WIDTH = 320;
+
 const TRANSPARENT = [0, 0, 0, 0];
 const OPAQUE = [0, 0, 0, 255];
 
@@ -46,16 +48,21 @@ function createMaskPainter(segmenterCanvas, maskCanvas, invert) {
   };
 }
 
+function shrinkInto(canvas, video) {
+  resizeIfNeeded(canvas, FACE_INPUT_WIDTH, Math.round(FACE_INPUT_WIDTH * video.videoHeight / video.videoWidth));
+  canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+}
+
 const pointOf = ({ x, y }) => ({ x, y });
 
-function toFace(detection, video) {
+function toFace(detection, frameSize) {
   const { originX, originY, width, height } = detection.boundingBox;
   const [eyeA, eyeB] = detection.keypoints;
   return {
-    x: (originX + width / 2) / video.videoWidth,
-    y: (originY + height / 2) / video.videoHeight,
-    width: width / video.videoWidth,
-    height: height / video.videoHeight,
+    x: (originX + width / 2) / frameSize.width,
+    y: (originY + height / 2) / frameSize.height,
+    width: width / frameSize.width,
+    height: height / frameSize.height,
     eyeA: pointOf(eyeA),
     eyeB: pointOf(eyeB),
   };
@@ -67,6 +74,7 @@ export async function createDetector({ invertMask = false } = {}) {
   const segmenter = await createSegmenter(fileset, segmenterCanvas);
   const faceDetector = await createFaceDetector(fileset);
   const maskCanvas = document.createElement("canvas");
+  const faceInput = document.createElement("canvas");
   const paintMask = createMaskPainter(segmenterCanvas, maskCanvas, invertMask);
   const state = { face: null, maskCanvas, timings: { segmentMs: 0, faceMs: 0 } };
 
@@ -78,8 +86,9 @@ export async function createDetector({ invertMask = false } = {}) {
 
   function locateFace(video, timestamp) {
     const start = performance.now();
-    const { detections } = faceDetector.detectForVideo(video, timestamp);
-    const found = detections[0]?.boundingBox ? toFace(detections[0], video) : null;
+    shrinkInto(faceInput, video);
+    const { detections } = faceDetector.detectForVideo(faceInput, timestamp);
+    const found = detections[0]?.boundingBox ? toFace(detections[0], faceInput) : null;
     state.face = found ? smoothFace(state.face, found) : null;
     state.timings.faceMs = performance.now() - start;
   }
