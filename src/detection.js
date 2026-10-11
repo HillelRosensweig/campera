@@ -1,26 +1,29 @@
-import { FilesetResolver, ImageSegmenter, PoseLandmarker }
+import { DrawingUtils, FaceDetector, FilesetResolver, ImageSegmenter }
   from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
-import { smoothLandmarks } from "./anchor.js";
+import { smoothFace } from "./anchor.js";
 
 const WASM_PATH = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
 const MODEL_BASE = "https://storage.googleapis.com/mediapipe-models";
 const SEGMENTER_MODEL = `${MODEL_BASE}/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite`;
-const POSE_MODEL = `${MODEL_BASE}/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task`;
+const FACE_MODEL = `${MODEL_BASE}/face_detector/blaze_face_short_range/float16/latest/blaze_face_short_range.tflite`;
 
-function createSegmenter(fileset) {
+const TRANSPARENT = [0, 0, 0, 0];
+const OPAQUE = [0, 0, 0, 255];
+
+function createSegmenter(fileset, canvas) {
   return ImageSegmenter.createFromOptions(fileset, {
-    baseOptions: { modelAssetPath: SEGMENTER_MODEL, delegate: "CPU" },
+    baseOptions: { modelAssetPath: SEGMENTER_MODEL, delegate: "GPU" },
+    canvas,
     runningMode: "VIDEO",
     outputConfidenceMasks: true,
     outputCategoryMask: false,
   });
 }
 
-function createPoseLandmarker(fileset) {
-  return PoseLandmarker.createFromOptions(fileset, {
-    baseOptions: { modelAssetPath: POSE_MODEL, delegate: "GPU" },
+function createFaceDetector(fileset) {
+  return FaceDetector.createFromOptions(fileset, {
+    baseOptions: { modelAssetPath: FACE_MODEL, delegate: "GPU" },
     runningMode: "VIDEO",
-    numPoses: 1,
   });
 }
 
@@ -30,46 +33,61 @@ function resizeIfNeeded(canvas, width, height) {
   canvas.height = height;
 }
 
-function paintMask(mask, canvas) {
-  const { width, height } = mask;
-  const values = mask.getAsFloat32Array();
-  const image = new ImageData(width, height);
-  for (let i = 0; i < values.length; i++) image.data[i * 4 + 3] = values[i] * 255;
-  resizeIfNeeded(canvas, width, height);
-  canvas.getContext("2d").putImageData(image, 0, 0);
+function createMaskPainter(segmenterCanvas, maskCanvas, invert) {
+  const drawing = new DrawingUtils(segmenterCanvas.getContext("webgl2"));
+  const [outside, inside] = invert ? [OPAQUE, TRANSPARENT] : [TRANSPARENT, OPAQUE];
+  const context = maskCanvas.getContext("2d");
+
+  return (mask) => {
+    drawing.drawConfidenceMask(mask, outside, inside);
+    resizeIfNeeded(maskCanvas, segmenterCanvas.width, segmenterCanvas.height);
+    context.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+    context.drawImage(segmenterCanvas, 0, 0);
+  };
 }
 
-function personMask(masks) {
-  return masks[masks.length - 1];
+const pointOf = ({ x, y }) => ({ x, y });
+
+function toFace(detection, video) {
+  const { originX, originY, width, height } = detection.boundingBox;
+  const [eyeA, eyeB] = detection.keypoints;
+  return {
+    x: (originX + width / 2) / video.videoWidth,
+    y: (originY + height / 2) / video.videoHeight,
+    width: width / video.videoWidth,
+    height: height / video.videoHeight,
+    eyeA: pointOf(eyeA),
+    eyeB: pointOf(eyeB),
+  };
 }
 
-export async function createDetector() {
+export async function createDetector({ invertMask = false } = {}) {
   const fileset = await FilesetResolver.forVisionTasks(WASM_PATH);
-  const segmenter = await createSegmenter(fileset);
-  const poseLandmarker = await createPoseLandmarker(fileset);
+  const segmenterCanvas = document.createElement("canvas");
+  const segmenter = await createSegmenter(fileset, segmenterCanvas);
+  const faceDetector = await createFaceDetector(fileset);
   const maskCanvas = document.createElement("canvas");
-  const state = { landmarks: null, maskCanvas, timings: { segmentMs: 0, poseMs: 0 } };
+  const paintMask = createMaskPainter(segmenterCanvas, maskCanvas, invertMask);
+  const state = { face: null, maskCanvas, timings: { segmentMs: 0, faceMs: 0 } };
 
   function segment(video, timestamp) {
     const start = performance.now();
-    segmenter.segmentForVideo(video, timestamp, (result) => {
-      paintMask(personMask(result.confidenceMasks), maskCanvas);
-    });
+    segmenter.segmentForVideo(video, timestamp, (result) => paintMask(result.confidenceMasks.at(-1)));
     state.timings.segmentMs = performance.now() - start;
   }
 
-  function locatePose(video, timestamp) {
+  function locateFace(video, timestamp) {
     const start = performance.now();
-    const pose = poseLandmarker.detectForVideo(video, timestamp);
-    const found = pose.landmarks[0] ?? null;
-    state.landmarks = found ? smoothLandmarks(state.landmarks, found) : null;
-    state.timings.poseMs = performance.now() - start;
+    const { detections } = faceDetector.detectForVideo(video, timestamp);
+    const found = detections[0]?.boundingBox ? toFace(detections[0], video) : null;
+    state.face = found ? smoothFace(state.face, found) : null;
+    state.timings.faceMs = performance.now() - start;
   }
 
   function detect(video) {
     const timestamp = performance.now();
     segment(video, timestamp);
-    locatePose(video, timestamp);
+    locateFace(video, timestamp);
   }
 
   return { state, detect };

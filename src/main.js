@@ -44,8 +44,8 @@ function capturePhoto(compositor) {
   result.style.display = "flex";
 }
 
-function showStats(stats, { landmarks, timings }) {
-  debug.textContent = `detect ${stats.detectionMs.toFixed(0)} ms (segment ${timings.segmentMs.toFixed(0)}, pose ${timings.poseMs.toFixed(0)}) | ${stats.fps.toFixed(0)} fps | pose ${landmarks ? "yes" : "no"}${stats.error}`;
+function showStats(stats, { face, timings }) {
+  debug.textContent = `detect ${stats.detectionMs.toFixed(0)} ms (segment ${timings.segmentMs.toFixed(0)}, face ${timings.faceMs.toFixed(0)}) | ${stats.fps.toFixed(0)} fps | face ${face ? "yes" : "no"}${stats.error}`;
 }
 
 function updateFps(stats, now) {
@@ -92,7 +92,7 @@ async function start() {
   startButton.textContent = "Loading…";
   const assets = await loadAssets();
   await startCamera(video);
-  const detector = await createDetector();
+  const detector = await createDetector({ invertMask: new URLSearchParams(location.search).has("invert") });
   const compositor = createCompositor({ video, detectorState: detector.state, ...assets });
 
   startButton.style.display = "none";
