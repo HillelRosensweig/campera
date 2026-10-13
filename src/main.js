@@ -95,7 +95,11 @@ async function start() {
   const assets = await loadAssets();
   await startCamera(video);
   const params = new URLSearchParams(location.search);
-  const detector = await createDetector({ invertMask: params.has("invert"), poseDelegate: params.has("poseGpu") ? "GPU" : "CPU" });
+  const detector = await createDetector({
+    invertMask: params.has("invert"),
+    poseDelegate: params.has("poseGpu") ? "GPU" : "CPU",
+    skipSegmentation: params.has("noSegment"),
+  });
   const compositor = createCompositor({ video, detectorState: detector.state, ...assets, debug: params.has("debug") });
 
   startButton.style.display = "none";

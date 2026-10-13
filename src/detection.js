@@ -62,7 +62,7 @@ function firstFound(locators, video, timestamp, timings) {
 
 const withoutLandmarks = (anchor) => anchor && { anchor, landmarks: {} };
 
-export async function createDetector({ invertMask = false, poseDelegate = "CPU" } = {}) {
+export async function createDetector({ invertMask = false, poseDelegate = "CPU", skipSegmentation = false } = {}) {
   const fileset = await FilesetResolver.forVisionTasks(WASM_PATH);
   const segmenterCanvas = document.createElement("canvas");
   const segmenter = await createSegmenter(fileset, segmenterCanvas);
@@ -92,7 +92,7 @@ export async function createDetector({ invertMask = false, poseDelegate = "CPU" 
 
   function detect(video) {
     const timestamp = performance.now();
-    segment(video, timestamp);
+    if (!skipSegmentation) segment(video, timestamp);
     locateTie(video, timestamp);
   }
 
