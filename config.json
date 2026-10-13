@@ -1,4 +1,4 @@
 {
-  "backdrop": "assets/backdrop.svg",
+  "backdrop": "assets/bookshelves.avif",
   "tie": { "file": "assets/tie.svg", "knot": { "x": 0.5, "y": 0.03 } }
 }
