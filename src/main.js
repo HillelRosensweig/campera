@@ -44,8 +44,10 @@ function capturePhoto(compositor) {
   result.style.display = "flex";
 }
 
+const formatLocatorTimings = (timings) => Object.entries(timings).map(([name, ms]) => `${name} ${ms.toFixed(0)}`).join(" / ");
+
 function showStats(stats, { locator, timings }) {
-  debug.textContent = `detect ${stats.detectionMs.toFixed(0)} ms (segment ${timings.segmentMs.toFixed(0)}, locate ${timings.locateMs.toFixed(0)}) | ${stats.fps.toFixed(0)} fps | tie ${locator ?? "none"}${stats.error}`;
+  debug.textContent = `detect ${stats.detectionMs.toFixed(0)} ms (segment ${timings.segmentMs.toFixed(0)}, locate ${timings.locateMs.toFixed(0)}: ${formatLocatorTimings(timings.locators)}) | ${stats.fps.toFixed(0)} fps | tie ${locator ?? "none"}${stats.error}`;
 }
 
 function updateFps(stats, now) {
@@ -93,7 +95,7 @@ async function start() {
   const assets = await loadAssets();
   await startCamera(video);
   const params = new URLSearchParams(location.search);
-  const detector = await createDetector({ invertMask: params.has("invert") });
+  const detector = await createDetector({ invertMask: params.has("invert"), poseDelegate: params.has("poseGpu") ? "GPU" : "CPU" });
   const compositor = createCompositor({ video, detectorState: detector.state, ...assets, debug: params.has("debug") });
 
   startButton.style.display = "none";

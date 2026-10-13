@@ -1,6 +1,7 @@
 import { DrawingUtils, FilesetResolver, ImageSegmenter }
   from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
 import { smoothAnchor } from "./anchor.js";
+import { resizeIfNeeded, resizeToVideoAspect } from "./canvas.js";
 import { anchorFromMask } from "./neck.js";
 import { createPoseLocator } from "./pose.js";
 
@@ -23,12 +24,6 @@ function createSegmenter(fileset, canvas) {
   });
 }
 
-function resizeIfNeeded(canvas, width, height) {
-  if (canvas.width === width && canvas.height === height) return;
-  canvas.width = width;
-  canvas.height = height;
-}
-
 function createMaskPainter(segmenterCanvas, maskCanvas, invert) {
   const drawing = new DrawingUtils(segmenterCanvas.getContext("webgl2"));
   const [outside, inside] = invert ? [OPAQUE, TRANSPARENT] : [TRANSPARENT, OPAQUE];
@@ -47,16 +42,19 @@ function createGridSampler() {
   const context = canvas.getContext("2d", { willReadFrequently: true });
 
   return (maskCanvas, video) => {
-    resizeIfNeeded(canvas, GRID_WIDTH, Math.round(GRID_WIDTH * video.videoHeight / video.videoWidth));
+    resizeToVideoAspect(canvas, GRID_WIDTH, video);
     context.clearRect(0, 0, canvas.width, canvas.height);
     context.drawImage(maskCanvas, 0, 0, canvas.width, canvas.height);
     return context.getImageData(0, 0, canvas.width, canvas.height);
   };
 }
 
-function firstFound(locators, video, timestamp) {
+function firstFound(locators, video, timestamp, timings) {
+  locators.forEach(({ name }) => { timings[name] = 0; });
   for (const { name, locate } of locators) {
+    const start = performance.now();
     const found = locate(video, timestamp);
+    timings[name] = performance.now() - start;
     if (found) return { name, ...found };
   }
   return null;
@@ -64,16 +62,16 @@ function firstFound(locators, video, timestamp) {
 
 const withoutLandmarks = (anchor) => anchor && { anchor, landmarks: {} };
 
-export async function createDetector({ invertMask = false } = {}) {
+export async function createDetector({ invertMask = false, poseDelegate = "CPU" } = {}) {
   const fileset = await FilesetResolver.forVisionTasks(WASM_PATH);
   const segmenterCanvas = document.createElement("canvas");
   const segmenter = await createSegmenter(fileset, segmenterCanvas);
   const maskCanvas = document.createElement("canvas");
   const paintMask = createMaskPainter(segmenterCanvas, maskCanvas, invertMask);
   const sampleGrid = createGridSampler();
-  const state = { anchor: null, landmarks: {}, locator: null, maskCanvas, timings: { segmentMs: 0, locateMs: 0 } };
+  const state = { anchor: null, landmarks: {}, locator: null, maskCanvas, timings: { segmentMs: 0, locateMs: 0, locators: {} } };
   const locators = [
-    { name: "pose", locate: await createPoseLocator(fileset) },
+    { name: "pose", locate: await createPoseLocator(fileset, poseDelegate) },
     { name: "mask", locate: (video) => (maskCanvas.width > 0 ? withoutLandmarks(anchorFromMask(sampleGrid(maskCanvas, video))) : null) },
   ];
 
@@ -85,7 +83,7 @@ export async function createDetector({ invertMask = false } = {}) {
 
   function locateTie(video, timestamp) {
     const start = performance.now();
-    const found = firstFound(locators, video, timestamp);
+    const found = firstFound(locators, video, timestamp, state.timings.locators);
     state.anchor = found ? smoothAnchor(state.anchor, found.anchor) : null;
     state.landmarks = found?.landmarks ?? {};
     state.locator = found?.name ?? null;

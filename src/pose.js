@@ -1,6 +1,7 @@
 import { PoseLandmarker }
   from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
 import { anchorAround } from "./anchor.js";
+import { resizeToVideoAspect } from "./canvas.js";
 
 const POSE_MODEL = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task";
 
@@ -8,6 +9,8 @@ const MOUTH_LEFT = 9;
 const MOUTH_RIGHT = 10;
 const LEFT_SHOULDER = 11;
 const RIGHT_SHOULDER = 12;
+
+const INPUT_WIDTH = 256;
 
 const MIN_SHOULDER_VISIBILITY = 0.5;
 const KNOT_RISE = 0.2;
@@ -32,15 +35,27 @@ function anchorFromLandmarks(landmarks) {
   };
 }
 
-export async function createPoseLocator(fileset) {
+function createShrinker() {
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  return (video) => {
+    resizeToVideoAspect(canvas, INPUT_WIDTH, video);
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    return canvas;
+  };
+}
+
+export async function createPoseLocator(fileset, delegate) {
   const landmarker = await PoseLandmarker.createFromOptions(fileset, {
-    baseOptions: { modelAssetPath: POSE_MODEL, delegate: "CPU" },
+    baseOptions: { modelAssetPath: POSE_MODEL, delegate },
     runningMode: "VIDEO",
     numPoses: 1,
   });
+  const shrink = createShrinker();
 
   return (video, timestamp) => {
-    const [landmarks] = landmarker.detectForVideo(video, timestamp).landmarks;
+    const [landmarks] = landmarker.detectForVideo(shrink(video), timestamp).landmarks;
     return landmarks ? anchorFromLandmarks(landmarks) : null;
   };
 }
