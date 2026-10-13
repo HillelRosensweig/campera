@@ -7,6 +7,7 @@ const SHOULDER_WIDENING = 1.25;
 const MIN_DROP_PER_HEAD_WIDTH = 1.6;
 const ESTIMATED_DROP_PER_HEAD_WIDTH = 1.9;
 const TIE_WIDTH_PER_HEAD_WIDTH = 0.9;
+const KNOT_DROP_PER_HEAD_WIDTH = 0.15;
 
 function measureRow(data, width, y) {
   let count = 0;
@@ -66,7 +67,7 @@ function findNeck(rows) {
 }
 
 function toAnchor(neck, width, height) {
-  const knot = { x: neck.center / width, y: neck.row / height };
+  const knot = { x: neck.center / width, y: (neck.row + KNOT_DROP_PER_HEAD_WIDTH * neck.headWidth) / height };
   return anchorAround(knot, { x: (TIE_WIDTH_PER_HEAD_WIDTH * neck.headWidth) / 2 / width, y: 0 });
 }
 
