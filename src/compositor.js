@@ -1,5 +1,6 @@
 import { estimateTiePlacement } from "./anchor.js";
 import { sizeOf } from "./canvas.js";
+import { drawCaption } from "./caption.js";
 import { drawDebugOverlay } from "./overlay.js";
 
 function coverRect(sourceWidth, sourceHeight, targetWidth, targetHeight) {
@@ -75,6 +76,7 @@ export function createCompositor({ backdrop, tie, debug = false }) {
     drawBackdrop(ctx);
     drawPerson(ctx, scene, mirror);
     drawTie(ctx, scene, mirror);
+    if (scene.caption) drawCaption(ctx, scene.caption);
     if (debug && mirror) drawDebugOverlay(ctx, scene, imageToCanvas(ctx, scene.image, mirror));
   }
 

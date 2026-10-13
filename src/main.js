@@ -11,6 +11,7 @@ const video = document.getElementById("camera");
 const view = document.getElementById("view");
 const startButton = document.getElementById("start");
 const shutter = document.getElementById("shutter");
+const nameInput = document.getElementById("name");
 const debug = document.getElementById("debug");
 const result = document.getElementById("result");
 const photo = document.getElementById("photo");
@@ -46,12 +47,14 @@ function renderPhoto(compositor, scene) {
   result.style.display = "flex";
 }
 
+const captionFor = (name) => (name.trim() ? `מפלגת ${name.trim()}` : "");
+
 async function capturePhoto(detector, compositor) {
   shutter.disabled = true;
   try {
     const scene = detector.snapshot(video);
     await nextPaint();
-    renderPhoto(compositor, detector.locateStill(scene));
+    renderPhoto(compositor, { ...detector.locateStill(scene), caption: captionFor(nameInput.value) });
   } finally {
     shutter.disabled = false;
   }
@@ -116,6 +119,7 @@ async function start() {
 
   startButton.style.display = "none";
   shutter.style.display = "block";
+  nameInput.style.display = "block";
   shutter.onclick = () => capturePhoto(detector, compositor);
   retake.onclick = () => { result.style.display = "none"; };
   runLoop(detector, compositor);
