@@ -37,17 +37,30 @@ function sizedContext(canvas, { width, height }) {
   return canvas.getContext("2d");
 }
 
-function capturePhoto(compositor) {
+const nextPaint = () => new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve)));
+
+function renderPhoto(compositor, scene) {
   const canvas = document.createElement("canvas");
-  compositor.drawFrame(sizedContext(canvas, CAPTURE_SIZE), false);
+  compositor.drawFrame(sizedContext(canvas, CAPTURE_SIZE), scene, false);
   photo.src = canvas.toDataURL("image/jpeg", 0.9);
   result.style.display = "flex";
+}
+
+async function capturePhoto(detector, compositor) {
+  shutter.disabled = true;
+  try {
+    const scene = detector.snapshot(video);
+    await nextPaint();
+    renderPhoto(compositor, detector.locateStill(scene));
+  } finally {
+    shutter.disabled = false;
+  }
 }
 
 const formatLocatorTimings = (timings) => Object.entries(timings).map(([name, ms]) => `${name} ${ms.toFixed(0)}`).join(" / ");
 
 function showStats(stats, { locator, timings }) {
-  debug.textContent = `detect ${stats.detectionMs.toFixed(0)} ms (segment ${timings.segmentMs.toFixed(0)}, locate ${timings.locateMs.toFixed(0)}: ${formatLocatorTimings(timings.locators)}) | ${stats.fps.toFixed(0)} fps | tie ${locator ?? "none"}${stats.error}`;
+  debug.textContent = `detect ${stats.detectionMs.toFixed(0)} ms (segment ${timings.segmentMs.toFixed(0)}, ${formatLocatorTimings(timings.live)}) | ${stats.fps.toFixed(0)} fps | tie ${locator ?? "none"} | capture ${formatLocatorTimings(timings.still) || "-"}${stats.error}`;
 }
 
 function updateFps(stats, now) {
@@ -82,7 +95,7 @@ function runLoop(detector, compositor) {
         runDetection(detector, stats);
         lastDetection = now;
       }
-      compositor.drawFrame(ctx, true);
+      compositor.drawFrame(ctx, detector.liveScene(video), true);
     }
     if (updateFps(stats, now)) showStats(stats, detector.state);
   }
@@ -98,13 +111,12 @@ async function start() {
   const detector = await createDetector({
     invertMask: params.has("invert"),
     poseDelegate: params.has("poseGpu") ? "GPU" : "CPU",
-    skipSegmentation: params.has("noSegment"),
   });
-  const compositor = createCompositor({ video, detectorState: detector.state, ...assets, debug: params.has("debug") });
+  const compositor = createCompositor({ ...assets, debug: params.has("debug") });
 
   startButton.style.display = "none";
   shutter.style.display = "block";
-  shutter.onclick = () => capturePhoto(compositor);
+  shutter.onclick = () => capturePhoto(detector, compositor);
   retake.onclick = () => { result.style.display = "none"; };
   runLoop(detector, compositor);
 }

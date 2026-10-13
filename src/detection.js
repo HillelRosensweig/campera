@@ -1,7 +1,7 @@
 import { DrawingUtils, FilesetResolver, ImageSegmenter }
   from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
 import { smoothAnchor } from "./anchor.js";
-import { resizeIfNeeded, resizeToVideoAspect } from "./canvas.js";
+import { copyImage, resizeIfNeeded, resizeToAspect, sizeOf } from "./canvas.js";
 import { anchorFromMask } from "./neck.js";
 import { createPoseLocator } from "./pose.js";
 
@@ -41,19 +41,19 @@ function createGridSampler() {
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d", { willReadFrequently: true });
 
-  return (maskCanvas, video) => {
-    resizeToVideoAspect(canvas, GRID_WIDTH, video);
+  return (maskCanvas) => {
+    resizeToAspect(canvas, GRID_WIDTH, maskCanvas);
     context.clearRect(0, 0, canvas.width, canvas.height);
     context.drawImage(maskCanvas, 0, 0, canvas.width, canvas.height);
     return context.getImageData(0, 0, canvas.width, canvas.height);
   };
 }
 
-function firstFound(locators, video, timestamp, timings) {
+function firstFound(locators, scene, timings) {
   locators.forEach(({ name }) => { timings[name] = 0; });
   for (const { name, locate } of locators) {
     const start = performance.now();
-    const found = locate(video, timestamp);
+    const found = locate(scene);
     timings[name] = performance.now() - start;
     if (found) return { name, ...found };
   }
@@ -62,39 +62,53 @@ function firstFound(locators, video, timestamp, timings) {
 
 const withoutLandmarks = (anchor) => anchor && { anchor, landmarks: {} };
 
-export async function createDetector({ invertMask = false, poseDelegate = "CPU", skipSegmentation = false } = {}) {
+export async function createDetector({ invertMask = false, poseDelegate = "CPU" } = {}) {
   const fileset = await FilesetResolver.forVisionTasks(WASM_PATH);
   const segmenterCanvas = document.createElement("canvas");
   const segmenter = await createSegmenter(fileset, segmenterCanvas);
   const maskCanvas = document.createElement("canvas");
   const paintMask = createMaskPainter(segmenterCanvas, maskCanvas, invertMask);
   const sampleGrid = createGridSampler();
-  const state = { anchor: null, landmarks: {}, locator: null, maskCanvas, timings: { segmentMs: 0, locateMs: 0, locators: {} } };
-  const locators = [
-    { name: "pose", locate: await createPoseLocator(fileset, poseDelegate) },
-    { name: "mask", locate: (video) => (maskCanvas.width > 0 ? withoutLandmarks(anchorFromMask(sampleGrid(maskCanvas, video))) : null) },
-  ];
+  const state = { anchor: null, landmarks: {}, locator: null, timings: { segmentMs: 0, live: {}, still: {} } };
 
-  function segment(video, timestamp) {
+  const maskLocator = {
+    name: "mask",
+    locate: ({ mask }) => (sizeOf(mask).width > 0 ? withoutLandmarks(anchorFromMask(sampleGrid(mask))) : null),
+  };
+  const poseLocator = { name: "pose", locate: await createPoseLocator(fileset, poseDelegate) };
+  const liveLocators = [maskLocator];
+  const stillLocators = [poseLocator, maskLocator];
+
+  function segment(image, timestamp) {
     const start = performance.now();
-    segmenter.segmentForVideo(video, timestamp, (result) => paintMask(result.confidenceMasks.at(-1)));
+    segmenter.segmentForVideo(image, timestamp, (result) => paintMask(result.confidenceMasks.at(-1)));
     state.timings.segmentMs = performance.now() - start;
   }
 
-  function locateTie(video, timestamp) {
-    const start = performance.now();
-    const found = firstFound(locators, video, timestamp, state.timings.locators);
+  function locateLive(video) {
+    const found = firstFound(liveLocators, { image: video, mask: maskCanvas }, state.timings.live);
     state.anchor = found ? smoothAnchor(state.anchor, found.anchor) : null;
     state.landmarks = found?.landmarks ?? {};
     state.locator = found?.name ?? null;
-    state.timings.locateMs = performance.now() - start;
   }
 
   function detect(video) {
-    const timestamp = performance.now();
-    if (!skipSegmentation) segment(video, timestamp);
-    locateTie(video, timestamp);
+    segment(video, performance.now());
+    locateLive(video);
   }
 
-  return { state, detect };
+  const liveScene = (video) => ({ image: video, mask: maskCanvas, anchor: state.anchor, landmarks: state.landmarks });
+
+  function snapshot(video) {
+    const image = copyImage(video);
+    segment(image, performance.now());
+    return { image, mask: copyImage(maskCanvas) };
+  }
+
+  function locateStill(scene) {
+    const found = firstFound(stillLocators, scene, state.timings.still);
+    return { ...scene, anchor: found?.anchor ?? null, landmarks: found?.landmarks ?? {} };
+  }
+
+  return { state, detect, liveScene, snapshot, locateStill };
 }

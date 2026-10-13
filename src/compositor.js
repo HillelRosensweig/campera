@@ -1,4 +1,5 @@
 import { estimateTiePlacement } from "./anchor.js";
+import { sizeOf } from "./canvas.js";
 import { drawDebugOverlay } from "./overlay.js";
 
 function coverRect(sourceWidth, sourceHeight, targetWidth, targetHeight) {
@@ -23,43 +24,43 @@ function drawMirrored(ctx, mirror, draw) {
   ctx.restore();
 }
 
-export function createCompositor({ video, detectorState, backdrop, tie, debug = false }) {
+export function createCompositor({ backdrop, tie, debug = false }) {
   const personLayer = document.createElement("canvas");
 
-  function videoFit(ctx) {
-    return coverRect(video.videoWidth, video.videoHeight, ctx.canvas.width, ctx.canvas.height);
+  function imageFit(ctx, image) {
+    const { width, height } = sizeOf(image);
+    return coverRect(width, height, ctx.canvas.width, ctx.canvas.height);
   }
 
   function drawBackdrop(ctx) {
     drawCover(ctx, backdrop, backdrop.width, backdrop.height);
   }
 
-  function drawPerson(ctx, mirror) {
-    const { maskCanvas } = detectorState;
-    if (maskCanvas.width === 0) return;
+  function drawPerson(ctx, { image, mask }, mirror) {
+    if (sizeOf(mask).width === 0) return;
 
     personLayer.width = ctx.canvas.width;
     personLayer.height = ctx.canvas.height;
     const layer = personLayer.getContext("2d");
-    const fit = videoFit(ctx);
+    const fit = imageFit(ctx, image);
     drawMirrored(layer, mirror, () => {
-      layer.drawImage(video, fit.x, fit.y, fit.width, fit.height);
+      layer.drawImage(image, fit.x, fit.y, fit.width, fit.height);
       layer.globalCompositeOperation = "destination-in";
-      layer.drawImage(maskCanvas, fit.x, fit.y, fit.width, fit.height);
+      layer.drawImage(mask, fit.x, fit.y, fit.width, fit.height);
     });
     ctx.drawImage(personLayer, 0, 0);
   }
 
-  function videoToCanvas(ctx, mirror) {
-    const fit = videoFit(ctx);
+  function imageToCanvas(ctx, image, mirror) {
+    const fit = imageFit(ctx, image);
     return (point) => {
       const x = fit.x + point.x * fit.width;
       return { x: mirror ? ctx.canvas.width - x : x, y: fit.y + point.y * fit.height };
     };
   }
 
-  function drawTie(ctx, mirror) {
-    const placement = estimateTiePlacement(detectorState.anchor, videoToCanvas(ctx, mirror));
+  function drawTie(ctx, { image, anchor }, mirror) {
+    const placement = estimateTiePlacement(anchor, imageToCanvas(ctx, image, mirror));
     if (!placement) return;
 
     const height = placement.width * (tie.image.height / tie.image.width);
@@ -70,11 +71,11 @@ export function createCompositor({ video, detectorState, backdrop, tie, debug = 
     ctx.restore();
   }
 
-  function drawFrame(ctx, mirror) {
+  function drawFrame(ctx, scene, mirror) {
     drawBackdrop(ctx);
-    drawPerson(ctx, mirror);
-    drawTie(ctx, mirror);
-    if (debug && mirror) drawDebugOverlay(ctx, detectorState, videoToCanvas(ctx, mirror));
+    drawPerson(ctx, scene, mirror);
+    drawTie(ctx, scene, mirror);
+    if (debug && mirror) drawDebugOverlay(ctx, scene, imageToCanvas(ctx, scene.image, mirror));
   }
 
   return { drawFrame };
