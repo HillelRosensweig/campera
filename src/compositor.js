@@ -1,4 +1,4 @@
-import { estimateTiePlacement } from "./anchor.js";
+import { fitOutfit } from "./anchor.js";
 import { sizeOf } from "./canvas.js";
 import { drawCaption } from "./caption.js";
 import { drawDebugOverlay } from "./overlay.js";
@@ -25,8 +25,9 @@ function drawMirrored(ctx, mirror, draw) {
   ctx.restore();
 }
 
-export function createCompositor({ backdrop, tie, debug = false }) {
+export function createCompositor({ backdrop, outfit, debug = false }) {
   const personLayer = document.createElement("canvas");
+  const outfitLayer = document.createElement("canvas");
 
   function imageFit(ctx, image) {
     const { width, height } = sizeOf(image);
@@ -37,19 +38,21 @@ export function createCompositor({ backdrop, tie, debug = false }) {
     drawCover(ctx, backdrop, backdrop.width, backdrop.height);
   }
 
-  function drawPerson(ctx, { image, mask }, mirror) {
-    if (sizeOf(mask).width === 0) return;
-
-    personLayer.width = ctx.canvas.width;
-    personLayer.height = ctx.canvas.height;
-    const layer = personLayer.getContext("2d");
+  function drawMaskedLayer(ctx, layerCanvas, { image, mask }, mirror, drawContent) {
+    layerCanvas.width = ctx.canvas.width;
+    layerCanvas.height = ctx.canvas.height;
+    const layer = layerCanvas.getContext("2d");
     const fit = imageFit(ctx, image);
-    drawMirrored(layer, mirror, () => {
-      layer.drawImage(image, fit.x, fit.y, fit.width, fit.height);
-      layer.globalCompositeOperation = "destination-in";
-      layer.drawImage(mask, fit.x, fit.y, fit.width, fit.height);
+    drawContent(layer, fit);
+    layer.globalCompositeOperation = "destination-in";
+    drawMirrored(layer, mirror, () => layer.drawImage(mask, fit.x, fit.y, fit.width, fit.height));
+    ctx.drawImage(layerCanvas, 0, 0);
+  }
+
+  function drawPerson(ctx, scene, mirror) {
+    drawMaskedLayer(ctx, personLayer, scene, mirror, (layer, fit) => {
+      drawMirrored(layer, mirror, () => layer.drawImage(scene.image, fit.x, fit.y, fit.width, fit.height));
     });
-    ctx.drawImage(personLayer, 0, 0);
   }
 
   function imageToCanvas(ctx, image, mirror) {
@@ -60,22 +63,25 @@ export function createCompositor({ backdrop, tie, debug = false }) {
     };
   }
 
-  function drawTie(ctx, { image, anchor }, mirror) {
-    const placement = estimateTiePlacement(anchor, imageToCanvas(ctx, image, mirror));
+  function drawOutfit(ctx, scene, mirror) {
+    const placement = fitOutfit(scene.anchor, outfit, imageToCanvas(ctx, scene.image, mirror));
     if (!placement) return;
 
-    const height = placement.width * (tie.image.height / tie.image.width);
-    ctx.save();
-    ctx.translate(placement.x, placement.y);
-    ctx.rotate(placement.angle);
-    ctx.drawImage(tie.image, -tie.knot.x * placement.width, -tie.knot.y * height, placement.width, height);
-    ctx.restore();
+    drawMaskedLayer(ctx, outfitLayer, scene, mirror, (layer) => {
+      layer.translate(placement.x, placement.y);
+      layer.rotate(placement.angle);
+      layer.scale(placement.scale, placement.scale);
+      layer.drawImage(outfit.image, -placement.origin.x, -placement.origin.y);
+      layer.setTransform(1, 0, 0, 1, 0, 0);
+    });
   }
 
   function drawFrame(ctx, scene, mirror) {
     drawBackdrop(ctx);
-    drawPerson(ctx, scene, mirror);
-    drawTie(ctx, scene, mirror);
+    if (sizeOf(scene.mask).width > 0) {
+      drawPerson(ctx, scene, mirror);
+      drawOutfit(ctx, scene, mirror);
+    }
     if (scene.caption) drawCaption(ctx, scene.caption);
     if (debug && mirror) drawDebugOverlay(ctx, scene, imageToCanvas(ctx, scene.image, mirror));
   }

@@ -6,24 +6,24 @@ export function smoothAnchor(previous, current, alpha = 0.4) {
   return previous ? blend(previous, current, alpha) : current;
 }
 
-export function anchorAround(knot, halfSpan) {
-  return {
-    knot,
-    left: { x: knot.x - halfSpan.x, y: knot.y - halfSpan.y },
-    right: { x: knot.x + halfSpan.x, y: knot.y + halfSpan.y },
-  };
-}
+const difference = (a, b) => ({ x: a.x - b.x, y: a.y - b.y });
+const lengthOf = (v) => Math.hypot(v.x, v.y);
+const angleOf = (v) => Math.atan2(v.y, v.x);
 
-export function estimateTiePlacement(anchor, toCanvas) {
+export function fitOutfit(anchor, outfit, toCanvas) {
   if (!anchor) return null;
 
-  const knot = toCanvas(anchor.knot);
+  const imagePoint = (p) => ({ x: p.x * outfit.image.width, y: p.y * outfit.image.height });
+  const collar = toCanvas(anchor.collar);
   const [left, right] = [anchor.left, anchor.right].map(toCanvas).sort((a, b) => a.x - b.x);
+  const bodySpan = difference(right, left);
+  const imageSpan = difference(imagePoint(outfit.rightShoulder), imagePoint(outfit.leftShoulder));
 
   return {
-    x: knot.x,
-    y: knot.y,
-    width: Math.hypot(right.x - left.x, right.y - left.y),
-    angle: Math.atan2(right.y - left.y, right.x - left.x),
+    x: collar.x,
+    y: collar.y,
+    scale: lengthOf(bodySpan) / lengthOf(imageSpan),
+    angle: angleOf(bodySpan) - angleOf(imageSpan),
+    origin: imagePoint(outfit.collar),
   };
 }

@@ -1,5 +1,5 @@
 const LANDMARK_COLOR = "#00e5ff";
-const KNOT_COLOR = "#ff1744";
+const COLLAR_COLOR = "#ff1744";
 const SPAN_COLOR = "#ffea00";
 const DOT_RADIUS = 6;
 
@@ -23,5 +23,5 @@ export function drawDebugOverlay(ctx, { anchor, landmarks }, toCanvas) {
   Object.values(landmarks).forEach((point) => drawDot(ctx, toCanvas(point), LANDMARK_COLOR));
   if (!anchor) return;
   drawLine(ctx, toCanvas(anchor.left), toCanvas(anchor.right), SPAN_COLOR);
-  drawDot(ctx, toCanvas(anchor.knot), KNOT_COLOR);
+  drawDot(ctx, toCanvas(anchor.collar), COLLAR_COLOR);
 }

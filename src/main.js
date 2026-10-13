@@ -28,8 +28,8 @@ function loadImage(url) {
 
 async function loadAssets() {
   const config = await (await fetch("config.json")).json();
-  const [backdrop, tieImage] = await Promise.all([loadImage(config.backdrop), loadImage(config.tie.file)]);
-  return { backdrop, tie: { image: tieImage, knot: config.tie.knot } };
+  const [backdrop, outfitImage] = await Promise.all([loadImage(config.backdrop), loadImage(config.outfit.file)]);
+  return { backdrop, outfit: { ...config.outfit, image: outfitImage } };
 }
 
 function sizedContext(canvas, { width, height }) {
@@ -63,7 +63,7 @@ async function capturePhoto(detector, compositor) {
 const formatLocatorTimings = (timings) => Object.entries(timings).map(([name, ms]) => `${name} ${ms.toFixed(0)}`).join(" / ");
 
 function showStats(stats, { locator, timings }) {
-  debug.textContent = `detect ${stats.detectionMs.toFixed(0)} ms (segment ${timings.segmentMs.toFixed(0)}, ${formatLocatorTimings(timings.live)}) | ${stats.fps.toFixed(0)} fps | tie ${locator ?? "none"} | capture ${formatLocatorTimings(timings.still) || "-"}${stats.error}`;
+  debug.textContent = `detect ${stats.detectionMs.toFixed(0)} ms (segment ${timings.segmentMs.toFixed(0)}, ${formatLocatorTimings(timings.live)}) | ${stats.fps.toFixed(0)} fps | outfit ${locator ?? "none"} | capture ${formatLocatorTimings(timings.still) || "-"}${stats.error}`;
 }
 
 function updateFps(stats, now) {
