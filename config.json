@@ -2,7 +2,6 @@
   "backdrop": "assets/bookshelves.avif",
   "outfit": {
     "file": "assets/suit.svg",
-    "collar": { "x": 0.5, "y": 0.066 },
     "leftShoulder": { "x": 0.25, "y": 0.105 },
     "rightShoulder": { "x": 0.75, "y": 0.105 }
   }

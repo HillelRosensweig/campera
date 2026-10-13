@@ -5,7 +5,8 @@ const SHOULDER_WIDENING = 1.25;
 const MIN_DROP_PER_HEAD_WIDTH = 1.6;
 const ESTIMATED_DROP_PER_HEAD_WIDTH = 1.9;
 const COLLAR_DROP_PER_HEAD_WIDTH = 0.15;
-const SHOULDER_DROP_PER_HEAD_WIDTH = 0.5;
+const SHOULDER_WIDTH_DROP_PER_HEAD_WIDTH = 0.5;
+const SHOULDER_JOINT_DROP_PER_HEAD_WIDTH = 0.15;
 const SHOULDER_JOINT_INSET = 0.12;
 
 function measureRow(data, width, y) {
@@ -62,8 +63,10 @@ function findNeck(rows) {
   const earliestRow = rowBelowTop(top, head.headWidth, MIN_DROP_PER_HEAD_WIDTH);
   const detected = shoulders >= 0 ? shoulders : rowBelowTop(top, head.headWidth, ESTIMATED_DROP_PER_HEAD_WIDTH);
   const row = Math.min(lastPersonRow, Math.max(earliestRow, detected));
-  const shoulderRow = Math.min(lastPersonRow, Math.round(row + SHOULDER_DROP_PER_HEAD_WIDTH * head.headWidth));
-  return { row, center: rows[row].center, headWidth: head.headWidth, shoulders: { ...rows[shoulderRow], row: shoulderRow } };
+  const rowBelowNeck = (dropPerHeadWidth) => Math.min(lastPersonRow, Math.round(row + dropPerHeadWidth * head.headWidth));
+  const { left, right } = rows[rowBelowNeck(SHOULDER_WIDTH_DROP_PER_HEAD_WIDTH)];
+  const shoulderLine = { row: rowBelowNeck(SHOULDER_JOINT_DROP_PER_HEAD_WIDTH), left, right };
+  return { row, center: rows[row].center, headWidth: head.headWidth, shoulders: shoulderLine };
 }
 
 function shoulderJoints({ row, left, right }, width, height) {
