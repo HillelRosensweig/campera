@@ -92,8 +92,9 @@ async function start() {
   startButton.textContent = "Loading…";
   const assets = await loadAssets();
   await startCamera(video);
-  const detector = await createDetector({ invertMask: new URLSearchParams(location.search).has("invert") });
-  const compositor = createCompositor({ video, detectorState: detector.state, ...assets });
+  const params = new URLSearchParams(location.search);
+  const detector = await createDetector({ invertMask: params.has("invert") });
+  const compositor = createCompositor({ video, detectorState: detector.state, ...assets, debug: params.has("debug") });
 
   startButton.style.display = "none";
   shutter.style.display = "block";

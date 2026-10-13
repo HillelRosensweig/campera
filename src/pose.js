@@ -26,7 +26,10 @@ function anchorFromLandmarks(landmarks) {
   const knot = lerp(shoulderCenter, mouthCenter, KNOT_RISE);
   const scale = TIE_WIDTH_PER_SHOULDER_WIDTH / 2;
   const halfSpan = { x: scale * (shoulders[1].x - shoulders[0].x), y: scale * (shoulders[1].y - shoulders[0].y) };
-  return anchorAround(knot, halfSpan);
+  return {
+    anchor: anchorAround(knot, halfSpan),
+    landmarks: { leftShoulder: shoulders[0], rightShoulder: shoulders[1], shoulderCenter, mouthCenter },
+  };
 }
 
 export async function createPoseLocator(fileset) {
