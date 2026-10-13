@@ -10,7 +10,7 @@ const LEFT_SHOULDER = 11;
 const RIGHT_SHOULDER = 12;
 
 const MIN_SHOULDER_VISIBILITY = 0.5;
-const KNOT_RISE = 0.35;
+const KNOT_RISE = 0.2;
 const TIE_WIDTH_PER_SHOULDER_WIDTH = 0.45;
 
 const midpoint = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
@@ -34,7 +34,7 @@ function anchorFromLandmarks(landmarks) {
 
 export async function createPoseLocator(fileset) {
   const landmarker = await PoseLandmarker.createFromOptions(fileset, {
-    baseOptions: { modelAssetPath: POSE_MODEL, delegate: "GPU" },
+    baseOptions: { modelAssetPath: POSE_MODEL, delegate: "CPU" },
     runningMode: "VIDEO",
     numPoses: 1,
   });
