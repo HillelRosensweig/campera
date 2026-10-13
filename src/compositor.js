@@ -55,7 +55,7 @@ export function createCompositor({ video, detectorState, backdrop, tie }) {
       const x = fit.x + point.x * fit.width;
       return { x: mirror ? ctx.canvas.width - x : x, y: fit.y + point.y * fit.height };
     };
-    const placement = estimateTiePlacement(detectorState.neck, toCanvas);
+    const placement = estimateTiePlacement(detectorState.anchor, toCanvas);
     if (!placement) return;
 
     const height = placement.width * (tie.image.height / tie.image.width);

@@ -4,6 +4,7 @@ const NECK_NARROWING = 0.8;
 const SHOULDER_WIDENING = 1.25;
 const MIN_DROP_PER_HEAD_WIDTH = 1.6;
 const ESTIMATED_DROP_PER_HEAD_WIDTH = 1.9;
+const TIE_WIDTH_PER_HEAD_WIDTH = 0.9;
 
 function measureRow(data, width, y) {
   let count = 0;
@@ -62,8 +63,17 @@ function findNeck(rows) {
   return { row, center: rows[row].center, headWidth: head.headWidth };
 }
 
-export function neckFromImage({ data, width, height }) {
+function toAnchor(neck, width, height) {
+  const y = neck.row / height;
+  const halfTie = (TIE_WIDTH_PER_HEAD_WIDTH * neck.headWidth) / 2;
+  return {
+    knot: { x: neck.center / width, y },
+    left: { x: (neck.center - halfTie) / width, y },
+    right: { x: (neck.center + halfTie) / width, y },
+  };
+}
+
+export function anchorFromMask({ data, width, height }) {
   const neck = findNeck(smoothCounts(measureRows(data, width, height)));
-  if (!neck) return null;
-  return { x: neck.center / width, y: neck.row / height, headWidth: neck.headWidth / width };
+  return neck ? toAnchor(neck, width, height) : null;
 }
