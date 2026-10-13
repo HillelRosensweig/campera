@@ -6,6 +6,14 @@ export function smoothAnchor(previous, current, alpha = 0.4) {
   return previous ? blend(previous, current, alpha) : current;
 }
 
+export function anchorAround(knot, halfSpan) {
+  return {
+    knot,
+    left: { x: knot.x - halfSpan.x, y: knot.y - halfSpan.y },
+    right: { x: knot.x + halfSpan.x, y: knot.y + halfSpan.y },
+  };
+}
+
 export function estimateTiePlacement(anchor, toCanvas) {
   if (!anchor) return null;
 

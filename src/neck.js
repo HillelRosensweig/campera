@@ -1,3 +1,5 @@
+import { anchorAround } from "./anchor.js";
+
 const PERSON_ALPHA = 128;
 const MIN_ROW_PIXELS = 2;
 const NECK_NARROWING = 0.8;
@@ -64,13 +66,8 @@ function findNeck(rows) {
 }
 
 function toAnchor(neck, width, height) {
-  const y = neck.row / height;
-  const halfTie = (TIE_WIDTH_PER_HEAD_WIDTH * neck.headWidth) / 2;
-  return {
-    knot: { x: neck.center / width, y },
-    left: { x: (neck.center - halfTie) / width, y },
-    right: { x: (neck.center + halfTie) / width, y },
-  };
+  const knot = { x: neck.center / width, y: neck.row / height };
+  return anchorAround(knot, { x: (TIE_WIDTH_PER_HEAD_WIDTH * neck.headWidth) / 2 / width, y: 0 });
 }
 
 export function anchorFromMask({ data, width, height }) {

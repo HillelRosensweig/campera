@@ -2,6 +2,7 @@ import { DrawingUtils, FilesetResolver, ImageSegmenter }
   from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
 import { smoothAnchor } from "./anchor.js";
 import { anchorFromMask } from "./neck.js";
+import { createPoseLocator } from "./pose.js";
 
 const WASM_PATH = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
 const MODEL_BASE = "https://storage.googleapis.com/mediapipe-models";
@@ -53,10 +54,10 @@ function createGridSampler() {
   };
 }
 
-function firstFound(locators, video) {
-  for (const locate of locators) {
-    const found = locate(video);
-    if (found) return found;
+function firstFound(locators, video, timestamp) {
+  for (const { name, locate } of locators) {
+    const anchor = locate(video, timestamp);
+    if (anchor) return { name, anchor };
   }
   return null;
 }
@@ -68,9 +69,10 @@ export async function createDetector({ invertMask = false } = {}) {
   const maskCanvas = document.createElement("canvas");
   const paintMask = createMaskPainter(segmenterCanvas, maskCanvas, invertMask);
   const sampleGrid = createGridSampler();
-  const state = { anchor: null, maskCanvas, timings: { segmentMs: 0, locateMs: 0 } };
+  const state = { anchor: null, locator: null, maskCanvas, timings: { segmentMs: 0, locateMs: 0 } };
   const locators = [
-    (video) => (maskCanvas.width > 0 ? anchorFromMask(sampleGrid(maskCanvas, video)) : null),
+    { name: "pose", locate: await createPoseLocator(fileset) },
+    { name: "mask", locate: (video) => (maskCanvas.width > 0 ? anchorFromMask(sampleGrid(maskCanvas, video)) : null) },
   ];
 
   function segment(video, timestamp) {
@@ -79,16 +81,18 @@ export async function createDetector({ invertMask = false } = {}) {
     state.timings.segmentMs = performance.now() - start;
   }
 
-  function locateTie(video) {
+  function locateTie(video, timestamp) {
     const start = performance.now();
-    const found = firstFound(locators, video);
-    state.anchor = found ? smoothAnchor(state.anchor, found) : null;
+    const found = firstFound(locators, video, timestamp);
+    state.anchor = found ? smoothAnchor(state.anchor, found.anchor) : null;
+    state.locator = found?.name ?? null;
     state.timings.locateMs = performance.now() - start;
   }
 
   function detect(video) {
-    segment(video, performance.now());
-    locateTie(video);
+    const timestamp = performance.now();
+    segment(video, timestamp);
+    locateTie(video, timestamp);
   }
 
   return { state, detect };
