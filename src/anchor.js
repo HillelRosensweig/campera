@@ -1,11 +1,3 @@
-const blend = (previous, current, alpha) => (typeof current === "number"
-  ? previous + alpha * (current - previous)
-  : Object.fromEntries(Object.keys(current).map((key) => [key, blend(previous[key], current[key], alpha)])));
-
-export function smoothAnchor(previous, current, alpha = 0.4) {
-  return previous ? blend(previous, current, alpha) : current;
-}
-
 const difference = (a, b) => ({ x: a.x - b.x, y: a.y - b.y });
 const midpoint = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
 const lengthOf = (v) => Math.hypot(v.x, v.y);

@@ -4,18 +4,19 @@ export function resizeIfNeeded(canvas, width, height) {
   canvas.height = height;
 }
 
-export const sizeOf = (image) => ({ width: image.videoWidth ?? image.width, height: image.videoHeight ?? image.height });
-
 export function resizeToAspect(canvas, width, source) {
-  const size = sizeOf(source);
-  resizeIfNeeded(canvas, width, Math.round(width * size.height / size.width));
+  resizeIfNeeded(canvas, width, Math.round(width * source.height / source.width));
 }
 
-export function copyImage(image) {
-  const { width, height } = sizeOf(image);
+export function createCanvas({ width, height }) {
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
-  if (width > 0) canvas.getContext("2d").drawImage(image, 0, 0);
+  return canvas;
+}
+
+export function copyImage(image) {
+  const canvas = createCanvas(image);
+  if (image.width > 0) canvas.getContext("2d").drawImage(image, 0, 0);
   return canvas;
 }
