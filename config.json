@@ -1,8 +1,3 @@
 {
-  "backdrop": "assets/bookshelves.avif",
-  "outfit": {
-    "file": "assets/suit.svg",
-    "leftShoulder": { "x": 0.25, "y": 0.115 },
-    "rightShoulder": { "x": 0.75, "y": 0.115 }
-  }
+  "backdrop": "assets/bookshelves.avif"
 }

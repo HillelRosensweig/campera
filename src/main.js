@@ -11,8 +11,6 @@ const retake = document.getElementById("retake");
 const params = new URLSearchParams(location.search);
 const processorReady = createProcessor({
   invertMask: params.has("invert"),
-  poseDelegate: params.has("poseGpu") ? "GPU" : "CPU",
-  debug: params.has("debug"),
 });
 processorReady.catch(console.error);
 

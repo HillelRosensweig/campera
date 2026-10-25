@@ -4,10 +4,6 @@ export function resizeIfNeeded(canvas, width, height) {
   canvas.height = height;
 }
 
-export function resizeToAspect(canvas, width, source) {
-  resizeIfNeeded(canvas, width, Math.round(width * source.height / source.width));
-}
-
 export function createCanvas({ width, height }) {
   const canvas = document.createElement("canvas");
   canvas.width = width;

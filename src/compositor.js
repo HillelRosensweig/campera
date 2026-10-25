@@ -1,6 +1,4 @@
-import { fitOutfit } from "./anchor.js";
 import { drawCaption } from "./caption.js";
-import { drawDebugOverlay } from "./overlay.js";
 
 function coverRect(sourceWidth, sourceHeight, targetWidth, targetHeight) {
   const scale = Math.max(targetWidth / sourceWidth, targetHeight / sourceHeight);
@@ -14,59 +12,27 @@ function drawCover(ctx, image, sourceWidth, sourceHeight) {
   ctx.drawImage(image, x, y, width, height);
 }
 
-export function createCompositor({ backdrop, outfit, debug = false }) {
+export function createCompositor({ backdrop }) {
   const personLayer = document.createElement("canvas");
-  const outfitLayer = document.createElement("canvas");
-
-  function imageFit(ctx, image) {
-    return coverRect(image.width, image.height, ctx.canvas.width, ctx.canvas.height);
-  }
 
   function drawBackdrop(ctx) {
     drawCover(ctx, backdrop, backdrop.width, backdrop.height);
   }
 
-  function drawMaskedLayer(ctx, layerCanvas, { image, mask }, drawContent) {
-    layerCanvas.width = ctx.canvas.width;
-    layerCanvas.height = ctx.canvas.height;
-    const layer = layerCanvas.getContext("2d");
-    const fit = imageFit(ctx, image);
-    drawContent(layer, fit);
+  function drawPerson(ctx, { image, mask }) {
+    personLayer.width = ctx.canvas.width;
+    personLayer.height = ctx.canvas.height;
+    const layer = personLayer.getContext("2d");
+    drawCover(layer, image, image.width, image.height);
     layer.globalCompositeOperation = "destination-in";
-    layer.drawImage(mask, fit.x, fit.y, fit.width, fit.height);
-    ctx.drawImage(layerCanvas, 0, 0);
-  }
-
-  function drawPerson(ctx, scene) {
-    drawMaskedLayer(ctx, personLayer, scene, (layer, fit) => {
-      layer.drawImage(scene.image, fit.x, fit.y, fit.width, fit.height);
-    });
-  }
-
-  function imageToCanvas(ctx, image) {
-    const fit = imageFit(ctx, image);
-    return (point) => ({ x: fit.x + point.x * fit.width, y: fit.y + point.y * fit.height });
-  }
-
-  function drawOutfit(ctx, scene) {
-    const placement = fitOutfit(scene.anchor, outfit, imageToCanvas(ctx, scene.image));
-    if (!placement) return;
-
-    drawMaskedLayer(ctx, outfitLayer, scene, (layer) => {
-      layer.translate(placement.x, placement.y);
-      layer.rotate(placement.angle);
-      layer.scale(placement.scale, placement.scale);
-      layer.drawImage(outfit.image, -placement.origin.x, -placement.origin.y);
-      layer.setTransform(1, 0, 0, 1, 0, 0);
-    });
+    drawCover(layer, mask, image.width, image.height);
+    ctx.drawImage(personLayer, 0, 0);
   }
 
   function drawFrame(ctx, scene) {
     drawBackdrop(ctx);
     drawPerson(ctx, scene);
-    drawOutfit(ctx, scene);
     if (scene.caption) drawCaption(ctx, scene.caption);
-    if (debug) drawDebugOverlay(ctx, scene, imageToCanvas(ctx, scene.image));
   }
 
   return { drawFrame };

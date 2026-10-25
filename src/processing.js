@@ -16,8 +16,7 @@ function loadImage(url) {
 
 async function loadAssets() {
   const config = await (await fetch("config.json")).json();
-  const [backdrop, outfitImage] = await Promise.all([loadImage(config.backdrop), loadImage(config.outfit.file)]);
-  return { backdrop, outfit: { ...config.outfit, image: outfitImage } };
+  return { backdrop: await loadImage(config.backdrop) };
 }
 
 async function decodePhoto(file) {
@@ -34,8 +33,6 @@ async function decodePhoto(file) {
   return resized;
 }
 
-const frame = (scene) => scene;
-
 const captionFor = (name) => (name.trim() ? `מפלגת ${name.trim()}` : "");
 
 function render(compositor, scene) {
@@ -44,12 +41,12 @@ function render(compositor, scene) {
   return canvas.toDataURL("image/jpeg", 0.9);
 }
 
-export async function createProcessor({ debug, ...detectorOptions }) {
+export async function createProcessor(detectorOptions) {
   const [assets, detector] = await Promise.all([loadAssets(), createDetector(detectorOptions)]);
-  const compositor = createCompositor({ ...assets, debug });
+  const compositor = createCompositor(assets);
 
   return async (file, name) => {
-    const scene = frame(detector.analyze(await decodePhoto(file)));
+    const scene = detector.analyze(await decodePhoto(file));
     return render(compositor, { ...scene, caption: captionFor(name) });
   };
 }
