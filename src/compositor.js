@@ -32,7 +32,7 @@ export function createCompositor({ backdrop }) {
   function drawFrame(ctx, scene) {
     drawBackdrop(ctx);
     drawPerson(ctx, scene);
-    if (scene.caption) drawCaption(ctx, scene.caption);
+    drawCaption(ctx, scene.caption);
   }
 
   return { drawFrame };

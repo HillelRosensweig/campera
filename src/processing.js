@@ -16,7 +16,7 @@ function loadImage(url) {
 
 async function loadAssets() {
   const config = await (await fetch("config.json")).json();
-  return { backdrop: await loadImage(config.backdrop) };
+  return { backdrop: await loadImage(config.backdrop), slogans: config.slogans };
 }
 
 async function decodePhoto(file) {
@@ -33,7 +33,9 @@ async function decodePhoto(file) {
   return resized;
 }
 
-const captionFor = (name) => (name.trim() ? `מפלגת ${name.trim()}` : "");
+const pickRandom = (list) => list[Math.floor(Math.random() * list.length)];
+
+const captionFor = (name, slogan) => ({ title: name.trim() ? `מפלגת ${name.trim()}` : "", slogan });
 
 function render(compositor, scene) {
   const canvas = createCanvas(PHOTO_SIZE);
@@ -42,11 +44,11 @@ function render(compositor, scene) {
 }
 
 export async function createProcessor(detectorOptions) {
-  const [assets, detector] = await Promise.all([loadAssets(), createDetector(detectorOptions)]);
+  const [{ slogans, ...assets }, detector] = await Promise.all([loadAssets(), createDetector(detectorOptions)]);
   const compositor = createCompositor(assets);
 
   return async (file, name) => {
     const scene = detector.analyze(await decodePhoto(file));
-    return render(compositor, { ...scene, caption: captionFor(name) });
+    return render(compositor, { ...scene, caption: captionFor(name, pickRandom(slogans)) });
   };
 }
