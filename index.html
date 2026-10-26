@@ -15,6 +15,7 @@
     .spinner { width: 3rem; height: 3rem; border: 4px solid #fff4; border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     #photo { max-height: 85dvh; max-width: 100vw; }
+    #version { position: fixed; bottom: 0.5rem; margin: 0; font-size: 0.75rem; opacity: 0.5; }
   </style>
 </head>
 <body>
@@ -23,6 +24,7 @@
       <input id="name" type="text" dir="rtl" placeholder="שם" autocomplete="off" aria-label="שם">
       <button type="submit">Next</button>
     </form>
+    <p id="version">dev</p>
   </section>
   <section data-screen="selfie" hidden>
     <label class="button">

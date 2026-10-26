@@ -1,6 +1,7 @@
 import { createProcessor } from "./processing.js";
 import { show } from "./screens.js";
 import { photoFile, sharePhoto } from "./sharing.js";
+import { loadVersion } from "./version.js";
 
 const nameForm = document.getElementById("name-form");
 const nameInput = document.getElementById("name");
@@ -9,8 +10,15 @@ const errorText = document.getElementById("error");
 const photo = document.getElementById("photo");
 const share = document.getElementById("share");
 const retake = document.getElementById("retake");
+const versionLabel = document.getElementById("version");
 
 let photoToShare;
+let version = "dev";
+
+loadVersion().then((loaded) => {
+  version = loaded;
+  versionLabel.textContent = loaded;
+});
 
 const params = new URLSearchParams(location.search);
 const processorReady = createProcessor({
@@ -27,7 +35,7 @@ function takeSelectedFile(input) {
 
 function showError(error) {
   console.error(error);
-  errorText.textContent = `Error: ${error.message}`;
+  errorText.textContent = `Error: ${error.message} (${version})`;
   show("selfie");
 }
 
