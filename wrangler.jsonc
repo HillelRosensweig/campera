@@ -1,6 +1,9 @@
 {
   "name": "campera",
   "compatibility_date": "2026-10-06",
+  "build": {
+    "command": "sh scripts/write-version.sh"
+  },
   "assets": {
     "directory": "."
   }
