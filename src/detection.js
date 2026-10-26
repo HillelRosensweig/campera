@@ -1,6 +1,7 @@
 import { DrawingUtils, FilesetResolver, ImageSegmenter }
   from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
 import { copyImage, resizeIfNeeded } from "./canvas.js";
+import { softenMask } from "./maskSoften.js";
 
 const WASM_PATH = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
 const MODEL_BASE = "https://storage.googleapis.com/mediapipe-models";
@@ -45,7 +46,7 @@ export async function createDetector({ invertMask = false } = {}) {
   }
 
   function analyze(image) {
-    return { image, mask: segment(image) };
+    return { image, mask: softenMask(image, segment(image)) };
   }
 
   return { analyze };

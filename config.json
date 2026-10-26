@@ -1,5 +1,6 @@
 {
-  "backdrop": "assets/bookshelves.avif",
+  "backdrop": "assets/selfie-backdrop.png",
+  "overlay": "assets/selfie-frame-overlay.png",
   "slogans": [
     "הגיע הזמן לשינוי",
     "בשבילך. בשביל כולנו.",

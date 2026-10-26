@@ -1,12 +1,16 @@
 import { createProcessor } from "./processing.js";
 import { show } from "./screens.js";
+import { photoFile, sharePhoto } from "./sharing.js";
 
 const nameForm = document.getElementById("name-form");
 const nameInput = document.getElementById("name");
 const selfieInput = document.getElementById("selfie");
 const errorText = document.getElementById("error");
 const photo = document.getElementById("photo");
+const share = document.getElementById("share");
 const retake = document.getElementById("retake");
+
+let photoToShare;
 
 const params = new URLSearchParams(location.search);
 const processorReady = createProcessor({
@@ -30,6 +34,7 @@ async function processSelfie(file) {
   show("waiting");
   const process = await processorReady;
   photo.src = await process(file, nameInput.value);
+  photoToShare = await photoFile(photo.src);
   errorText.textContent = "";
   show("result");
 }
@@ -43,5 +48,7 @@ selfieInput.onchange = () => {
   const file = takeSelectedFile(selfieInput);
   if (file) processSelfie(file).catch(showError);
 };
+
+share.onclick = () => sharePhoto(photoToShare).catch(console.error);
 
 retake.onclick = () => show("selfie");

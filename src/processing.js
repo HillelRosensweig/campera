@@ -16,7 +16,8 @@ function loadImage(url) {
 
 async function loadAssets() {
   const config = await (await fetch("config.json")).json();
-  return { backdrop: await loadImage(config.backdrop), slogans: config.slogans };
+  const [backdrop, overlay] = await Promise.all([loadImage(config.backdrop), loadImage(config.overlay)]);
+  return { backdrop, overlay, slogans: config.slogans };
 }
 
 async function decodePhoto(file) {
@@ -35,7 +36,7 @@ async function decodePhoto(file) {
 
 const pickRandom = (list) => list[Math.floor(Math.random() * list.length)];
 
-const captionFor = (name, slogan) => ({ title: name.trim() ? `מפלגת ${name.trim()}` : "", slogan });
+const captionFor = (name, slogan) => ({ title: name.trim() ? `${name.trim()},` : "", slogan });
 
 function render(compositor, scene) {
   const canvas = createCanvas(PHOTO_SIZE);

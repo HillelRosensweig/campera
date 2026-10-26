@@ -12,11 +12,15 @@ function drawCover(ctx, image, sourceWidth, sourceHeight) {
   ctx.drawImage(image, x, y, width, height);
 }
 
-export function createCompositor({ backdrop }) {
+export function createCompositor({ backdrop, overlay }) {
   const personLayer = document.createElement("canvas");
 
   function drawBackdrop(ctx) {
     drawCover(ctx, backdrop, backdrop.width, backdrop.height);
+  }
+
+  function drawOverlay(ctx) {
+    drawCover(ctx, overlay, overlay.width, overlay.height);
   }
 
   function drawPerson(ctx, { image, mask }) {
@@ -32,6 +36,7 @@ export function createCompositor({ backdrop }) {
   function drawFrame(ctx, scene) {
     drawBackdrop(ctx);
     drawPerson(ctx, scene);
+    drawOverlay(ctx);
     drawCaption(ctx, scene.caption);
   }
 
