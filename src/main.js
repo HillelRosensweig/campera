@@ -6,6 +6,7 @@ import { captureConsole, debugDetails } from "./debug.js";
 
 const nameForm = document.getElementById("name-form");
 const nameInput = document.getElementById("name");
+const sloganSelect = document.getElementById("slogan");
 const selfieInput = document.getElementById("selfie");
 const errorText = document.getElementById("error");
 const photo = document.getElementById("photo");
@@ -27,7 +28,11 @@ if (params.has("debug")) captureConsole();
 const processorReady = createProcessor({
   invertMask: params.has("invert"),
 });
-processorReady.catch(console.error);
+processorReady.then(({ slogans }) => fillSloganOptions(slogans)).catch(console.error);
+
+function fillSloganOptions(slogans) {
+  sloganSelect.append(...slogans.map((slogan) => new Option(slogan, slogan)));
+}
 
 function takeSelectedFile(input) {
   const [file] = input.files;
@@ -44,8 +49,8 @@ function showError(error) {
 
 async function processSelfie(file) {
   show("waiting");
-  const process = await processorReady;
-  photo.src = await process(file, nameInput.value);
+  const { process } = await processorReady;
+  photo.src = await process(file, nameInput.value, sloganSelect.value);
   photoToShare = await photoFile(photo.src);
   errorText.textContent = "";
   show("result");

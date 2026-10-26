@@ -10,7 +10,7 @@
     section { height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; }
     form { display: contents; }
     button, .button { font-size: 1.1rem; padding: 0.8rem 1.6rem; border-radius: 2rem; border: 0; background: #fff; color: #000; cursor: pointer; }
-    #name { width: min(70vw, 18rem); font-size: 1.1rem; padding: 0.6rem 1rem; border-radius: 2rem; border: 0; text-align: center; }
+    #name, #slogan { width: min(70vw, 18rem); font-size: 1.1rem; padding: 0.6rem 1rem; border-radius: 2rem; border: 0; text-align: center; }
     #error { color: #ff6b6b; white-space: pre-wrap; overflow-wrap: anywhere; padding: 0 1rem; }
     .spinner { width: 3rem; height: 3rem; border: 4px solid #fff4; border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -22,6 +22,9 @@
   <section data-screen="name">
     <form id="name-form">
       <input id="name" type="text" dir="rtl" placeholder="שם" autocomplete="off" aria-label="שם">
+      <select id="slogan" dir="rtl" aria-label="סלוגן">
+        <option value="">אקראי</option>
+      </select>
       <button type="submit">Next</button>
     </form>
     <p id="version"></p>

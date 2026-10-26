@@ -37,6 +37,8 @@ async function decodePhoto(file) {
 
 const pickRandom = (list) => list[Math.floor(Math.random() * list.length)];
 
+const sloganOrRandom = (chosen, slogans) => chosen || pickRandom(slogans);
+
 const captionFor = (name, slogan) => ({ title: name.trim() ? `${name.trim()},` : "", slogan });
 
 function render(compositor, scene) {
@@ -49,13 +51,15 @@ export async function createProcessor(detectorOptions) {
   const [{ slogans, ...assets }, detector] = await Promise.all([loadAssets(), createDetector(detectorOptions)]);
   const compositor = createCompositor(assets);
 
-  return async (file, name) => {
+  const process = async (file, name, slogan) => {
     const image = await decodePhoto(file);
     try {
       const scene = detector.analyze(image);
-      return render(compositor, { ...scene, caption: captionFor(name, pickRandom(slogans)) });
+      return render(compositor, { ...scene, caption: captionFor(name, sloganOrRandom(slogan, slogans)) });
     } catch (error) {
       throw attachPhotoInfo(error, file, image);
     }
   };
+
+  return { slogans, process };
 }
