@@ -2,7 +2,7 @@ import { createProcessor } from "./processing.js";
 import { show } from "./screens.js";
 import { photoFile, sharePhoto } from "./sharing.js";
 import { loadVersion } from "./version.js";
-import { debugDetails } from "./debug.js";
+import { captureConsole, debugDetails } from "./debug.js";
 
 const nameForm = document.getElementById("name-form");
 const nameInput = document.getElementById("name");
@@ -22,6 +22,8 @@ loadVersion().then((loaded) => {
 });
 
 const params = new URLSearchParams(location.search);
+if (params.has("debug")) captureConsole();
+
 const processorReady = createProcessor({
   invertMask: params.has("invert"),
   delegate: params.has("cpu") ? "CPU" : "GPU",
@@ -35,9 +37,9 @@ function takeSelectedFile(input) {
 }
 
 function showError(error) {
-  console.error(error);
   const message = `Error: ${error?.message} (${version})`;
   errorText.textContent = params.has("debug") ? [message, ...debugDetails(error)].join("\n") : message;
+  console.error(error);
   show("selfie");
 }
 
