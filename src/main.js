@@ -2,6 +2,7 @@ import { createProcessor } from "./processing.js";
 import { show } from "./screens.js";
 import { photoFile, sharePhoto } from "./sharing.js";
 import { loadVersion } from "./version.js";
+import { debugDetails } from "./debug.js";
 
 const nameForm = document.getElementById("name-form");
 const nameInput = document.getElementById("name");
@@ -35,7 +36,8 @@ function takeSelectedFile(input) {
 
 function showError(error) {
   console.error(error);
-  errorText.textContent = `Error: ${error.message} (${version})`;
+  const message = `Error: ${error?.message} (${version})`;
+  errorText.textContent = params.has("debug") ? [message, ...debugDetails(error)].join("\n") : message;
   show("selfie");
 }
 

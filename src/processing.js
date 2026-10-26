@@ -1,6 +1,7 @@
 import { createCanvas } from "./canvas.js";
 import { createCompositor } from "./compositor.js";
 import { createDetector } from "./detection.js";
+import { attachPhotoInfo } from "./debug.js";
 
 const PHOTO_SIZE = { width: 1080, height: 1920 };
 const MAX_PHOTO_SIDE = 1920;
@@ -49,7 +50,12 @@ export async function createProcessor(detectorOptions) {
   const compositor = createCompositor(assets);
 
   return async (file, name) => {
-    const scene = detector.analyze(await decodePhoto(file));
-    return render(compositor, { ...scene, caption: captionFor(name, pickRandom(slogans)) });
+    const image = await decodePhoto(file);
+    try {
+      const scene = detector.analyze(image);
+      return render(compositor, { ...scene, caption: captionFor(name, pickRandom(slogans)) });
+    } catch (error) {
+      throw attachPhotoInfo(error, file, image);
+    }
   };
 }
