@@ -10,9 +10,9 @@ const SEGMENTER_MODEL = `${MODEL_BASE}/image_segmenter/selfie_segmenter/float16/
 const TRANSPARENT = [0, 0, 0, 0];
 const OPAQUE = [0, 0, 0, 255];
 
-function createSegmenter(fileset, canvas) {
+function createSegmenter(fileset, canvas, delegate) {
   return ImageSegmenter.createFromOptions(fileset, {
-    baseOptions: { modelAssetPath: SEGMENTER_MODEL, delegate: "GPU" },
+    baseOptions: { modelAssetPath: SEGMENTER_MODEL, delegate },
     canvas,
     runningMode: "IMAGE",
     outputConfidenceMasks: true,
@@ -33,10 +33,10 @@ function createMaskPainter(segmenterCanvas, maskCanvas, invert) {
   };
 }
 
-export async function createDetector({ invertMask = false } = {}) {
+export async function createDetector({ invertMask = false, delegate = "GPU" } = {}) {
   const fileset = await FilesetResolver.forVisionTasks(WASM_PATH);
   const segmenterCanvas = document.createElement("canvas");
-  const segmenter = await createSegmenter(fileset, segmenterCanvas);
+  const segmenter = await createSegmenter(fileset, segmenterCanvas, delegate);
   const maskCanvas = document.createElement("canvas");
   const paintMask = createMaskPainter(segmenterCanvas, maskCanvas, invertMask);
 

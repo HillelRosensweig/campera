@@ -15,6 +15,7 @@ let photoToShare;
 const params = new URLSearchParams(location.search);
 const processorReady = createProcessor({
   invertMask: params.has("invert"),
+  delegate: params.has("cpu") ? "CPU" : "GPU",
 });
 processorReady.catch(console.error);
 
