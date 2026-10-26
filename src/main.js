@@ -26,7 +26,6 @@ if (params.has("debug")) captureConsole();
 
 const processorReady = createProcessor({
   invertMask: params.has("invert"),
-  delegate: params.has("cpu") ? "CPU" : "GPU",
 });
 processorReady.catch(console.error);
 

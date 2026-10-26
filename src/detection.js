@@ -1,48 +1,43 @@
-import { DrawingUtils, FilesetResolver, ImageSegmenter }
+import { FilesetResolver, ImageSegmenter }
   from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
-import { copyImage, resizeIfNeeded } from "./canvas.js";
+import { createCanvas } from "./canvas.js";
 import { softenMask } from "./maskSoften.js";
 
 const WASM_PATH = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
 const MODEL_BASE = "https://storage.googleapis.com/mediapipe-models";
 const SEGMENTER_MODEL = `${MODEL_BASE}/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite`;
 
-const TRANSPARENT = [0, 0, 0, 0];
-const OPAQUE = [0, 0, 0, 255];
-
-function createSegmenter(fileset, canvas, delegate) {
+// CPU avoids float GPU textures, which some browsers (e.g. Samsung Internet) don't expose.
+function createSegmenter(fileset) {
   return ImageSegmenter.createFromOptions(fileset, {
-    baseOptions: { modelAssetPath: SEGMENTER_MODEL, delegate },
-    canvas,
+    baseOptions: { modelAssetPath: SEGMENTER_MODEL, delegate: "CPU" },
     runningMode: "IMAGE",
     outputConfidenceMasks: true,
     outputCategoryMask: false,
   });
 }
 
-function createMaskPainter(segmenterCanvas, maskCanvas, invert) {
-  const drawing = new DrawingUtils(segmenterCanvas.getContext("webgl2"));
-  const [outside, inside] = invert ? [OPAQUE, TRANSPARENT] : [TRANSPARENT, OPAQUE];
-  const context = maskCanvas.getContext("2d");
-
-  return (mask) => {
-    drawing.drawConfidenceMask(mask, outside, inside);
-    resizeIfNeeded(maskCanvas, segmenterCanvas.width, segmenterCanvas.height);
-    context.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
-    context.drawImage(segmenterCanvas, 0, 0);
-  };
+function maskToCanvas(mask, invert) {
+  const { width, height } = mask;
+  const confidences = mask.getAsFloat32Array();
+  const canvas = createCanvas({ width, height });
+  const context = canvas.getContext("2d");
+  const pixels = context.createImageData(width, height);
+  for (let i = 0; i < confidences.length; i++) {
+    pixels.data[4 * i + 3] = (invert ? 1 - confidences[i] : confidences[i]) * 255;
+  }
+  context.putImageData(pixels, 0, 0);
+  return canvas;
 }
 
-export async function createDetector({ invertMask = false, delegate = "GPU" } = {}) {
+export async function createDetector({ invertMask = false } = {}) {
   const fileset = await FilesetResolver.forVisionTasks(WASM_PATH);
-  const segmenterCanvas = document.createElement("canvas");
-  const segmenter = await createSegmenter(fileset, segmenterCanvas, delegate);
-  const maskCanvas = document.createElement("canvas");
-  const paintMask = createMaskPainter(segmenterCanvas, maskCanvas, invertMask);
+  const segmenter = await createSegmenter(fileset);
 
   function segment(image) {
-    segmenter.segment(image, (result) => paintMask(result.confidenceMasks.at(-1)));
-    return copyImage(maskCanvas);
+    let mask;
+    segmenter.segment(image, (result) => { mask = maskToCanvas(result.confidenceMasks.at(-1), invertMask); });
+    return mask;
   }
 
   function analyze(image) {
